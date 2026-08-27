@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>재고관리</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#F2F2F7">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="재고관리">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root{
+    --bg:#F2F2F7;
+    --card:#FFFFFF;
+    --ink:#1C1C1E;
+    --ink2:#8E8E93;
+    --sep:#E5E5EA;
+    --blue:#007AFF;
+    --blue-soft:#EAF2FF;
+    --green:#34C759;
+    --green-soft:#E8F9EC;
+    --red:#FF3B30;
+    --red-soft:#FFEBEA;
+    --orange:#FF9500;
+    --orange-soft:#FFF3E0;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:50px;
+  }
+  .wrap{max-width:620px;margin:0 auto;padding:0 16px;}
+
+  header{padding:20px 0 12px;position:sticky;top:0;background:var(--bg);z-index:20;}
+  h1{font-size:32px;font-weight:800;margin:0;letter-spacing:-0.02em;}
+  .sync{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink2);margin-top:8px;}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 1.8s infinite;}
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(52,199,89,0.5);}
+    70%{box-shadow:0 0 0 6px rgba(52,199,89,0);}
+    100%{box-shadow:0 0 0 0 rgba(52,199,89,0);}
+  }
+
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0 18px;}
+  .stat{background:var(--card);border-radius:14px;padding:12px 10px;text-align:center;box-shadow:0 1px 2px rgba(0,0,0,0.04);}
+  .stat .v{font-size:19px;font-weight:800;line-height:1.15;}
+  .stat .l{font-size:10px;color:var(--ink2);margin-top:3px;font-weight:600;}
+  .stat.warn .v{color:var(--red);}
+  .stat.orange .v{color:var(--orange);}
+
+  .tabs{display:flex;background:#E9E9EC;border-radius:11px;padding:3px;margin-bottom:14px;gap:2px;}
+  .tab{
+    flex:1;text-align:center;padding:8px 4px;border-radius:9px;font-size:12.5px;
+    font-weight:600;color:var(--ink2);cursor:pointer;border:none;background:transparent;
+    transition:background .18s ease, color .18s ease;
+  }
+  .tab.active{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,0.12);}
+
+  .breadcrumb{display:flex;align-items:center;gap:6px;margin-bottom:14px;font-size:13px;color:var(--ink2);}
+  .breadcrumb .back{
+    display:flex;align-items:center;gap:2px;font-weight:700;color:var(--blue);cursor:pointer;
+  }
+  .breadcrumb .sep{color:#C7C7CC;}
+  .breadcrumb .current{font-weight:700;color:var(--ink);}
+
+  .folder-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:22px;}
+  .folder-card{
+    background:var(--card);border-radius:16px;padding:16px 14px;cursor:pointer;
+    box-shadow:0 1px 2px rgba(0,0,0,0.04);
+  }
+  .folder-card:active{background:#FAFAFA;}
+  .folder-card .fname{font-size:14.5px;font-weight:700;margin-bottom:6px;}
+  .folder-card .fmeta{font-size:11px;color:var(--ink2);display:flex;justify-content:space-between;align-items:center;}
+  .folder-card .fcount{font-weight:600;}
+  .folder-card .flow{color:var(--red);font-weight:700;}
+
+  .list-card{background:var(--card);border-radius:var(--radius);overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,0.04);margin-bottom:22px;}
+  .row{padding:13px 16px;border-bottom:1px solid var(--sep);cursor:pointer;display:flex;align-items:center;gap:12px;}
+  .list-card .row:last-child{border-bottom:none;}
+  .row:active{background:#FAFAFA;}
+  .row-main{flex:1;min-width:0;}
+  .row-name{font-size:14.5px;font-weight:600;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .row-sub{font-size:11.5px;color:var(--ink2);margin-top:2px;}
+  .badge{font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:6px;white-space:nowrap;}
+  .badge.low{background:var(--red-soft);color:var(--red);}
+  .badge.soon{background:var(--orange-soft);color:var(--orange);}
+  .badge.expired{background:var(--red-soft);color:var(--red);}
+
+  .row-right{display:flex;align-items:center;gap:8px;}
+  .row-stock{text-align:right;}
+  .row-stock .num{font-size:17px;font-weight:800;line-height:1;white-space:nowrap;}
+  .row-stock .unit{font-size:10px;color:var(--ink2);}
+  .chev{color:#C7C7CC;font-size:14px;transition:transform .2s ease;flex-shrink:0;}
+  .row.open .chev{transform:rotate(90deg);}
+
+  .detail{max-height:0;overflow:hidden;transition:max-height .25s ease;background:#FBFBFD;}
+  .detail.open{max-height:760px;}
+  .detail-inner{padding:14px 16px 18px;border-bottom:1px solid var(--sep);}
+
+  .gauge{position:relative;height:10px;border-radius:6px;background:#E9E9EC;overflow:hidden;margin-bottom:6px;}
+  .gauge-fill{height:100%;border-radius:6px;transition:width .3s ease;}
+  .gauge-label{font-size:10.5px;color:var(--ink2);margin-bottom:14px;}
+
+  .stepper{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+  .stepper button{
+    width:34px;height:34px;border-radius:10px;border:none;background:#fff;
+    box-shadow:0 1px 2px rgba(0,0,0,0.08);font-size:17px;font-weight:600;color:var(--ink);cursor:pointer;
+  }
+  .stepper button:active{transform:scale(0.93);background:#F2F2F2;}
+  .stepper .cur{flex:1;text-align:center;font-size:12.5px;color:var(--ink2);}
+
+  .pallet-box{
+    background:var(--blue-soft);border-radius:12px;padding:10px 12px;margin-bottom:12px;
+  }
+  .pallet-box .pt{font-size:10.5px;font-weight:700;color:var(--blue);margin-bottom:8px;}
+  .pallet-row{display:flex;gap:8px;align-items:flex-end;}
+  .pallet-row .field{flex:1;}
+  .pallet-row .field label{font-size:10px;}
+  .pallet-row input{width:100%;border:1px solid #CBE0FF;border-radius:8px;padding:7px 9px;font-size:13px;background:#fff;}
+  .pallet-row .btn{white-space:nowrap;}
+
+  .field-row{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+  .field{flex:1;min-width:110px;}
+  .field label{display:block;font-size:10.5px;color:var(--ink2);font-weight:600;margin-bottom:4px;}
+  .field input{width:100%;border:1px solid var(--sep);border-radius:9px;padding:8px 10px;font-size:13.5px;background:#fff;color:var(--ink);font-family:inherit;}
+  .mode-toggle{display:flex;gap:6px;margin-bottom:10px;}
+  .mode-toggle button{font-size:11.5px;padding:6px 11px;border-radius:8px;border:1px solid var(--sep);background:#fff;cursor:pointer;color:var(--ink2);font-weight:600;}
+  .mode-toggle button.active{background:var(--blue);color:#fff;border-color:var(--blue);}
+
+  .btn-row{display:flex;justify-content:flex-end;gap:8px;margin-top:4px;}
+  .btn{border:none;border-radius:9px;padding:9px 16px;font-size:12.5px;font-weight:700;cursor:pointer;}
+  .btn.primary{background:var(--blue);color:#fff;}
+  .btn.primary:active{background:#0062CC;}
+  .btn.ghost{background:#fff;color:var(--ink2);border:1px solid var(--sep);}
+  .btn.ghost:active{background:#F2F2F2;}
+  .meta-save-row{display:flex;justify-content:flex-end;margin-top:2px;margin-bottom:4px;}
+
+  .log-title{font-size:20px;font-weight:800;margin:6px 0 12px;letter-spacing:-0.01em;}
+  .log-card{background:var(--card);border-radius:var(--radius);overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,0.04);max-height:360px;overflow-y:auto;}
+  .log-row{display:flex;gap:10px;align-items:flex-start;padding:11px 16px;border-bottom:1px solid var(--sep);font-size:12.5px;}
+  .log-row:last-child{border-bottom:none;}
+  .log-delta{font-weight:800;min-width:50px;text-align:right;font-variant-numeric:tabular-nums;}
+  .log-delta.up{color:var(--green);}
+  .log-delta.down{color:var(--red);}
+  .log-body{flex:1;min-width:0;}
+  .log-body .name{font-weight:600;}
+  .log-body .note{color:var(--ink2);}
+  .log-cat{font-size:9px;font-weight:700;color:var(--ink2);background:#EFEFF2;padding:2px 6px;border-radius:6px;white-space:nowrap;}
+  .log-time{color:var(--ink2);white-space:nowrap;font-size:11px;padding-top:1px;}
+  .empty{padding:30px;text-align:center;color:var(--ink2);font-size:13px;}
+
+  .footer-note{margin-top:20px;font-size:11px;color:var(--ink2);line-height:1.6;text-align:center;padding:0 10px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>재고관리</h1>
+    <div class="sync"><span class="dot"></span><span id="syncText">동기화 중…</span></div>
+  </header>
+
+  <div class="stats" id="stats"></div>
+  <div class="tabs" id="tabs"></div>
+  <div class="breadcrumb" id="breadcrumb"></div>
+  <div id="listArea"></div>
+
+  <div class="log-title">최근 변경 내역</div>
+  <div class="log-card" id="logList"></div>
+
+  <div class="footer-note">
+    생수 / 탄산수 / 주스 / 티 / 기타 순으로 나뉘고, 각 카테고리를 누르면 브랜드별 폴더가 뜹니다.
+    파레트 환산이 있는 품목(아쿠아파나, 에비앙, 산펠레그리노, 페리에, 라우치, 갈바니나)은
+    상세 화면에서 <b>파레트+박스</b>로 바로 입력할 수 있습니다.
+  </div>
+
+</div>
+
+<script>
+const CATEGORIES = ['생수','탄산수','주스','티','기타'];
+const CATEGORY_COLOR = { '생수':'#007AFF', '탄산수':'#32ADE6', '주스':'#FF9500', '티':'#34C759', '기타':'#8E8E93' };
+
+const PRODUCTS = [
+  {id:"aq025", category:"생수", group:"아쿠아파나", name:"아쿠아파나0.25L(24EA)", unit:"박스", boxPerPallet:75, note:"", initialStock:569},
+  {id:"ev033", category:"생수", group:"에비앙", name:"에비앙0.33L", unit:"박스", boxPerPallet:72, note:"", initialStock:1113},
+  {id:"ev05", category:"생수", group:"에비앙", name:"에비앙0.5L", unit:"박스", boxPerPallet:null, note:"", initialStock:123},
+  {id:"ev_rosca", category:"생수", group:"에비앙", name:"에비앙 GLASS(ROSCA) 0.33L", unit:"박스", boxPerPallet:56, note:"", initialStock:144},
+  {id:"sds033", category:"생수", group:"삼다수", name:"삼다수0.33L", unit:"박스", boxPerPallet:null, note:"", initialStock:218},
+  {id:"sds05", category:"생수", group:"삼다수", name:"삼다수0.5L", unit:"박스", boxPerPallet:null, note:"", initialStock:16},
+  {id:"sds_pororo", category:"생수", group:"삼다수", name:"삼다수 뽀로로", unit:"박스", boxPerPallet:null, note:"", initialStock:10},
+  {id:"fiji033", category:"생수", group:"피지", name:"피지워터0.33L(24EA)", unit:"박스", boxPerPallet:null, note:"", initialStock:0},
+  {id:"fiji05", category:"생수", group:"피지", name:"피지워터0.5L(24EA)", unit:"박스", boxPerPallet:null, note:"", initialStock:0},
+  {id:"fiji15", category:"생수", group:"피지", name:"피지워터1.5L(12EA)", unit:"박스", boxPerPallet:null, note:"", initialStock:0},
+  {id:"pr02", category:"탄산수", group:"페리에", name:"페리에(플레인)0.2L", unit:"박스", boxPerPallet:120, note:"", initialStock:131},
+  {id:"prplain", category:"탄산수", group:"페리에", name:"페리에(플레인)", unit:"박스", boxPerPallet:null, note:"", initialStock:0},
+  {id:"sp025", category:"탄산수", group:"산펠레그리노", name:"산펠레그리노0.25L(24EA)", unit:"박스", boxPerPallet:120, note:"", initialStock:1165},
+  {id:"sp075", category:"탄산수", group:"산펠레그리노", name:"산펠레그리노0.75L", unit:"박스", boxPerPallet:null, note:"", initialStock:4},
+  {id:"ev_rosca_sp", category:"탄산수", group:"에비앙", name:"에비앙 로스카 스파클링", unit:"박스", boxPerPallet:56, note:"", initialStock:112},
+  {id:"rauch_orange", category:"주스", group:"라우치", name:"라우치(오렌지)", unit:"박스", boxPerPallet:130, note:"", initialStock:155},
+  {id:"rauch_mango", category:"주스", group:"라우치", name:"라우치(망고)", unit:"박스", boxPerPallet:130, note:"", initialStock:195},
+  {id:"rauch_peach_sp", category:"주스", group:"라우치", name:"라우치 스파클링(피치)", unit:"박스", boxPerPallet:null, note:"", initialStock:1},
+  {id:"rauch_straw", category:"주스", group:"라우치", name:"라우치(딸기)", unit:"박스", boxPerPallet:null, note:"", initialStock:1},
+  {id:"galv_lemonade", category:"주스", group:"갈바니나", name:"갈바니나 레모네이드", unit:"박스", boxPerPallet:88, note:"", initialStock:478},
+  {id:"sp_pompelmo", category:"주스", group:"산펠레그리노", name:"산펠레 폼펠모", unit:"박스", boxPerPallet:null, note:"", initialStock:1},
+  {id:"sp_rosa", category:"주스", group:"산펠레그리노", name:"산펠레 로사", unit:"박스", boxPerPallet:null, note:"", initialStock:0},
+  {id:"sp_arancia", category:"주스", group:"산펠레그리노", name:"산펠레 아란시아타(오렌지)", unit:"박스", boxPerPallet:null, note:"", initialStock:0},
+  {id:"gm_apple_juice", category:"주스", group:"골드메달", name:"골드메달 애플 쥬스", unit:"박스", boxPerPallet:null, note:"", initialStock:0},
+  {id:"gm_apple_sp", category:"주스", group:"골드메달", name:"골드메달 애플 스파클링", unit:"박스", boxPerPallet:null, note:"", initialStock:0},
+  {id:"noa_banana_mango", category:"주스", group:"노아쥬스", name:"노아쥬스(바나나리치 망고)", unit:"박스", boxPerPallet:null, note:"", initialStock:0},
+  {id:"noa_valencia", category:"주스", group:"노아쥬스", name:"노아쥬스(발렌시아 오렌지)", unit:"박스", boxPerPallet:null, note:"", initialStock:5},
+  {id:"noa_mixed", category:"주스", group:"노아쥬스", name:"노아쥬스(사과 복숭아 키위 망고 라임)", unit:"박스", boxPerPallet:null, note:"", initialStock:0},
+  {id:"noa_guava", category:"주스", group:"노아쥬스", name:"노아쥬스(오렌지구아바포포)", unit:"박스", boxPerPallet:null, note:"", initialStock:0},
+  {id:"noa_crushed", category:"주스", group:"노아쥬스", name:"노아쥬스(크러쉬드 애플)", unit:"박스", boxPerPallet:null, note:"", initialStock:2},
+  {id:"noa_kiwi", category:"주스", group:"노아쥬스", name:"노아쥬스(키위)", unit:"박스", boxPerPallet:null, note:"", initialStock:0},
+  {id:"noa_apple_nectarine", category:"주스", group:"노아쥬스", name:"노아쥬스(애플 넥타린)", unit:"박스", boxPerPallet:null, note:"", initialStock:0},
+  {id:"noa_watermelon", category:"주스", group:"노아쥬스", name:"노아쥬스(워터멜론)", unit:"박스", boxPerPallet:null, note:"", initialStock:0},
+  {id:"nudie_apple", category:"주스", group:"누디", name:"누디 유아주스(사과)", unit:"박스", boxPerPallet:null, note:"", initialStock:19},
+  {id:"mart_apple", category:"주스", group:"마티넬리", name:"마티넬리 애플", unit:"박스", boxPerPallet:null, note:"", initialStock:138},
+  {id:"mart_apple_sp", category:"주스", group:"마티넬리", name:"마티넬리 애플 스파클링", unit:"박스", boxPerPallet:null, note:"", initialStock:135},
+  {id:"coke_original", category:"주스", group:"코카콜라", name:"코카콜라 오리지널", unit:"박스", boxPerPallet:null, note:"", initialStock:8},
+  {id:"coke_zero", category:"주스", group:"코카콜라", name:"코카콜라 제로", unit:"박스", boxPerPallet:null, note:"", initialStock:3},
+  {id:"epheve_lemon", category:"주스", group:"에페브", name:"에페브 레몬", unit:"박스", boxPerPallet:null, note:"", initialStock:0},
+  {id:"epheve_pink", category:"주스", group:"에페브", name:"에페브 핑크", unit:"박스", boxPerPallet:null, note:"", initialStock:1},
+  {id:"os_green", category:"티", group:"오설록", name:"오설록 녹차 티백", unit:"박스", boxPerPallet:null, note:"1박스=10입", initialStock:0},
+  {id:"os_camellia", category:"티", group:"오설록", name:"오설록 동백꽃 티백", unit:"박스", boxPerPallet:null, note:"1박스=10입", initialStock:0},
+  {id:"os_pear", category:"티", group:"오설록", name:"오설록 삼다 꿀배", unit:"박스", boxPerPallet:null, note:"1박스=10입", initialStock:0},
+  {id:"os_sejak", category:"티", group:"오설록", name:"오설록 세작 10입", unit:"박스", boxPerPallet:null, note:"1박스=10입", initialStock:0},
+  {id:"os_cherry", category:"티", group:"오설록", name:"오설록 체리 루이보스", unit:"박스", boxPerPallet:null, note:"1박스=10입", initialStock:0},
+  {id:"os_camellia_gotjawal", category:"티", group:"오설록", name:"오설록 동백 곶자왈", unit:"박스", boxPerPallet:null, note:"", initialStock:0},
+  {id:"os_pure_green", category:"티", group:"오설록", name:"오설록 순수녹차", unit:"박스", boxPerPallet:null, note:"", initialStock:4},
+  {id:"dm_rooibos", category:"티", group:"다만프레르", name:"다만프레르 루이보스 티", unit:"박스", boxPerPallet:null, note:"", initialStock:0},
+  {id:"dm_earlgrey", category:"티", group:"다만프레르", name:"다만프레르 얼그레이 티", unit:"박스", boxPerPallet:null, note:"", initialStock:0},
+  {id:"dm_jasmine", category:"티", group:"다만프레르", name:"다만프레르 자스민 녹차 티", unit:"박스", boxPerPallet:null, note:"", initialStock:0},
+  {id:"dm_chamomile", category:"티", group:"다만프레르", name:"다만프레르 카모마일 티", unit:"박스", boxPerPallet:null, note:"", initialStock:0},
+  {id:"dm_peppermint", category:"티", group:"다만프레르", name:"다만프레르 페퍼민트 티", unit:"박스", boxPerPallet:null, note:"", initialStock:0},
+  {id:"dm_hibiscus", category:"티", group:"다만프레르", name:"다만프레르 히비스커스 삼바", unit:"박스", boxPerPallet:null, note:"", initialStock:0},
+  {id:"dm_passion", category:"티", group:"다만프레르", name:"다만프레르 빠씨옹 드 플레흐", unit:"박스", boxPerPallet:null, note:"", initialStock:0},
+  {id:"twg_vanilla", category:"티", group:"TWG", name:"TWG 바닐라버번", unit:"박스", boxPerPallet:null, note:"", initialStock:0},
+  {id:"twg_earlgrey", category:"티", group:"TWG", name:"TWG 얼그레이", unit:"박스", boxPerPallet:null, note:"", initialStock:0},
+  {id:"twg_summer", category:"티", group:"TWG", name:"TWG 이터널썸머", unit:"박스", boxPerPallet:null, note:"", initialStock:0},
+  {id:"twg_chamomile", category:"티", group:"TWG", name:"TWG 카모마일", unit:"박스", boxPerPallet:null, note:"", initialStock:0},
+  {id:"napkin", category:"기타", group:"기타용품", name:"무지 냅킨", unit:"박스", boxPerPallet:null, note:"", initialStock:8},
+  {id:"lapatisse_sugar", category:"기타", group:"기타용품", name:"라빠르쉐 설탕", unit:"박스", boxPerPallet:null, note:"", initialStock:26},
+  {id:"fruit_dried_lemon", category:"기타", group:"과일", name:"건 레몬", unit:"봉지", boxPerPallet:null, note:"", initialStock:0},
+  {id:"fruit_dried_orange", category:"기타", group:"과일", name:"건 오렌지", unit:"봉지", boxPerPallet:null, note:"", initialStock:2},
+];
+
+// ⚠️ Google Apps Script 배포 후 나오는 웹 앱 URL을 아래에 붙여넣으세요.
+const API_URL = 'https://script.google.com/macros/s/AKfycbyPyhO7an8uxw7vjWVtR57rIQSLwWE4RPBWemnPnwBUbKHtQ6sbqkKOxdOKbuRqh23h/exec';
+
+const POLL_MS = 4000;
+const MAX_LOG = 60;
+const EXPIRY_SOON_DAYS = 30;
+
+let stockData = {};
+let logData = [];
+let lastStockStr = '';
+let lastLogStr = '';
+let activeTab = '생수';
+let activeGroup = null;   // null = 전체
+let openId = null;
+let modeState = {};
+
+async function apiGet(action){
+  const res = await fetch(`${API_URL}?action=${action}`);
+  return res.json();
+}
+async function apiPost(payload){
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: {'Content-Type': 'text/plain;charset=utf-8'},
+    body: JSON.stringify(payload)
+  });
+  return res.json();
+}
+
+async function loadAll(){
+  if(!API_URL || API_URL.indexOf('PASTE_YOUR') === 0){
+    document.getElementById('syncText').textContent = '⚠ API_URL 미설정 (설치 가이드 참고)';
+    return;
+  }
+  try{
+    await apiPost({action:'init', products: PRODUCTS});
+    stockData = await apiGet('stock');
+    logData = await apiGet('log');
+  }catch(e){
+    console.error('불러오기 실패', e);
+    document.getElementById('syncText').textContent = '⚠ 연결 실패 (API_URL 확인 필요)';
+  }
+}
+
+function daysUntil(dateStr){
+  if(!dateStr) return null;
+  const d = new Date(dateStr + 'T00:00:00');
+  if(isNaN(d.getTime())) return null;
+  const now = new Date();
+  now.setHours(0,0,0,0);
+  return Math.round((d - now) / 86400000);
+}
+function fmtTime(ts){
+  if(!ts) return '기록 없음';
+  const d = new Date(ts);
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  const hh = String(d.getHours()).padStart(2,'0');
+  const mm = String(d.getMinutes()).padStart(2,'0');
+  if(sameDay) return `오늘 ${hh}:${mm}`;
+  return `${d.getMonth()+1}/${d.getDate()} ${hh}:${mm}`;
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function fmtQty(p, stock){
+  if(p.boxPerPallet){
+    const pallets = Math.floor(stock / p.boxPerPallet);
+    const boxes = stock % p.boxPerPallet;
+    if(pallets > 0) return `${pallets}팔렛 ${boxes}${p.unit}`;
+    return `${boxes}${p.unit}`;
+  }
+  return `${stock}${p.unit}`;
+}
+
+function render(){
+  renderTabs();
+  renderBreadcrumb();
+  renderStats();
+  renderList();
+  renderLog();
+}
+
+function renderTabs(){
+  document.getElementById('tabs').innerHTML = CATEGORIES.map(c=>
+    `<button class="tab ${c===activeTab?'active':''}" onclick="setTab('${c}')">${c}</button>`
+  ).join('');
+}
+function setTab(c){
+  activeTab = c;
+  activeGroup = null;
+  openId = null;
+  render();
+}
+
+function renderBreadcrumb(){
+  const el = document.getElementById('breadcrumb');
+  if(activeGroup === null){ el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <span class="back" onclick="setGroup(null)">‹ ${activeTab}</span>
+    <span class="sep">/</span>
+    <span class="current">${activeGroup}</span>`;
+}
+function setGroup(g){
+  activeGroup = g;
+  openId = null;
+  render();
+}
+
+function currentItems(){
+  return PRODUCTS.filter(p=>p.category===activeTab && (activeGroup===null || p.group===activeGroup));
+}
+
+function renderStats(){
+  const items = currentItems();
+  let low = 0, soon = 0;
+  items.forEach(p=>{
+    const d = stockData[p.id] || {stock:0, par:10, expiry:''};
+    if((d.stock||0) <= (d.par ?? 10)) low++;
+    const days = daysUntil(d.expiry);
+    if(days !== null && days <= EXPIRY_SOON_DAYS) soon++;
+  });
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="v">${items.length}</div><div class="l">전체 품목 수</div></div>
+    <div class="stat ${low>0?'warn':''}"><div class="v">${low}</div><div class="l">재고부족 품목</div></div>
+    <div class="stat ${soon>0?'orange':''}"><div class="v">${soon}</div><div class="l">유통기한 임박/경과</div></div>`;
+}
+
+function renderList(){
+  if(activeGroup === null){
+    renderFolderGrid();
+  } else {
+    const items = currentItems();
+    document.getElementById('listArea').innerHTML =
+      `<div class="list-card">${items.map(renderRow).join('')}</div>`;
+  }
+}
+
+function renderFolderGrid(){
+  const items = PRODUCTS.filter(p=>p.category===activeTab);
+  const groups = [...new Set(items.map(p=>p.group))];
+  const cards = groups.map(g=>{
+    const groupItems = items.filter(p=>p.group===g);
+    const low = groupItems.filter(p=>{
+      const d = stockData[p.id] || {stock:0, par:10};
+      return (d.stock||0) <= (d.par ?? 10);
+    }).length;
+    return `
+      <div class="folder-card" onclick="setGroup('${g}')">
+        <div class="fname">${g}</div>
+        <div class="fmeta">
+          <span class="fcount">${groupItems.length}개 품목</span>
+          ${low>0 ? `<span class="flow">부족 ${low}</span>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+  document.getElementById('listArea').innerHTML = `<div class="folder-grid">${cards}</div>`;
+}
+
+function renderRow(p){
+  const d = stockData[p.id] || {stock:0, par:10, expiry:'', updatedAt:null};
+  const stock = d.stock ?? 0;
+  const par = d.par ?? 10;
+  const low = stock <= par;
+  const days = daysUntil(d.expiry);
+  const isOpen = openId === p.id;
+  const color = CATEGORY_COLOR[p.category];
+
+  let expiryBadge = '';
+  if(days !== null){
+    if(days < 0) expiryBadge = `<span class="badge expired">유통기한 경과</span>`;
+    else if(days <= EXPIRY_SOON_DAYS) expiryBadge = `<span class="badge soon">D-${days}</span>`;
+  }
+
+  return `
+  <div class="row ${isOpen?'open':''}" onclick="toggleRow('${p.id}')">
+    <div class="row-main">
+      <div class="row-name">
+        ${escapeHtml(p.name)}
+        ${low ? `<span class="badge low">부족</span>` : ''}
+        ${expiryBadge}
+      </div>
+      <div class="row-sub">${p.note || (d.expiry ? '유통기한 '+d.expiry : fmtTime(d.updatedAt))}</div>
+    </div>
+    <div class="row-right">
+      <div class="row-stock">
+        <div class="num">${fmtQty(p, stock)}</div>
+      </div>
+      <div class="chev">›</div>
+    </div>
+  </div>
+  <div class="detail ${isOpen?'open':''}" id="detail_${p.id}">
+    ${isOpen ? renderDetail(p, d, color) : ''}
+  </div>`;
+}
+
+function renderDetail(p, d, color){
+  const stock = d.stock ?? 0;
+  const par = d.par ?? 10;
+  const gaugeMax = Math.max(par*2, stock, 1);
+  const pct = Math.min(100, Math.round((stock/gaugeMax)*100));
+  const low = stock <= par;
+  const mode = modeState[p.id] || 'add';
+
+  let palletBlock = '';
+  if(p.boxPerPallet){
+    const curPallets = Math.floor(stock / p.boxPerPallet);
+    const curBoxes = stock % p.boxPerPallet;
+    palletBlock = `
+    <div class="pallet-box">
+      <div class="pt">파레트 단위로 실사 입력 (1파레트 = ${p.boxPerPallet}${p.unit})</div>
+      <div class="pallet-row">
+        <div class="field"><label>파레트</label><input type="number" id="pallet_${p.id}" value="${curPallets}"></div>
+        <div class="field"><label>남은 ${p.unit}</label><input type="number" id="palletbox_${p.id}" value="${curBoxes}"></div>
+        <button class="btn primary" onclick="applyPallet('${p.id}')">설정</button>
+      </div>
+    </div>`;
+  }
+
+  return `
+  <div class="detail-inner" onclick="event.stopPropagation()">
+    <div class="gauge"><div class="gauge-fill" style="width:${pct}%;background:${low?'var(--red)':color}"></div></div>
+    <div class="gauge-label">기준 ${par}${p.unit} · 마지막 업데이트 ${fmtTime(d.updatedAt)}</div>
+
+    <div class="stepper">
+      <button onclick="quickAdjust('${p.id}', -1)">−</button>
+      <div class="cur">현재 ${fmtQty(p, stock)}</div>
+      <button onclick="quickAdjust('${p.id}', 1)">+</button>
+    </div>
+
+    ${palletBlock}
+
+    <div class="mode-toggle">
+      <button id="mode_add_${p.id}" class="${mode==='add'?'active':''}" onclick="setMode('${p.id}','add')">± 조정(입출고)</button>
+      <button id="mode_set_${p.id}" class="${mode==='set'?'active':''}" onclick="setMode('${p.id}','set')">실사 입력</button>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label id="qlabel_${p.id}">${mode==='add' ? `${p.unit} 수(+입고 / −출고)` : `실사 ${p.unit} 수`}</label>
+        <input type="number" id="qty_${p.id}" placeholder="${mode==='add' ? '예: -2' : '예: 8'}">
+      </div>
+      <div class="field" style="flex:2;">
+        <label>메모</label>
+        <input type="text" id="note_${p.id}" placeholder="예: 몽블랑 신강남 출고">
+      </div>
+    </div>
+    <div class="btn-row" style="margin-bottom:16px;">
+      <button class="btn primary" onclick="applyAdjust('${p.id}')">적용</button>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label>안전재고 기준(${p.unit})</label>
+        <input type="number" id="par_${p.id}" value="${par}">
+      </div>
+      <div class="field">
+        <label>유통기한</label>
+        <input type="date" id="expiry_${p.id}" value="${d.expiry||''}">
+      </div>
+    </div>
+    <div class="meta-save-row">
+      <button class="btn ghost" onclick="saveMeta('${p.id}')">기준·유통기한 저장</button>
+    </div>
+  </div>`;
+}
+
+function renderLog(){
+  const el = document.getElementById('logList');
+  if(logData.length===0){
+    el.innerHTML = '<div class="empty">아직 변경 내역이 없습니다.</div>';
+    return;
+  }
+  const idToProduct = {};
+  PRODUCTS.forEach(p=> idToProduct[p.id]=p);
+
+  const rows = [...logData].slice(-MAX_LOG).reverse().map(entry=>{
+    const p = idToProduct[entry.id];
+    const unit = p ? p.unit : '';
+    const isUp = entry.delta > 0;
+    const deltaLabel = entry.mode==='set'
+      ? `→${entry.resulting}`
+      : (isUp? `+${entry.delta}` : `${entry.delta}`);
+    return `
+      <div class="log-row">
+        <div class="log-delta ${isUp?'up':(entry.delta<0?'down':'')}">${deltaLabel}</div>
+        <div class="log-body">
+          <span class="name">${escapeHtml(entry.name)}</span>
+          <span class="note"> · ${entry.resulting}${unit}${entry.note? ' · '+escapeHtml(entry.note):''}</span>
+        </div>
+        ${p ? `<span class="log-cat">${p.category}</span>` : ''}
+        <div class="log-time">${fmtTime(entry.ts)}</div>
+      </div>`;
+  }).join('');
+  el.innerHTML = rows;
+}
+
+function toggleRow(id){
+  openId = (openId === id) ? null : id;
+  renderList();
+}
+function setMode(id, mode){
+  modeState[id] = mode;
+  renderList();
+}
+
+async function quickAdjust(id, delta){
+  const p = PRODUCTS.find(x=>x.id===id);
+  try{
+    await apiPost({action:'adjust', id, name:p.name, mode:'add', value:delta, note:''});
+  }catch(e){ console.error(e); return; }
+  stockData = await apiGet('stock');
+  logData = await apiGet('log');
+  render();
+}
+
+async function applyAdjust(id){
+  const p = PRODUCTS.find(x=>x.id===id);
+  const mode = modeState[id] || 'add';
+  const qtyInput = document.getElementById('qty_'+id);
+  const noteInput = document.getElementById('note_'+id);
+  const raw = parseInt(qtyInput.value, 10);
+  if(isNaN(raw)){ qtyInput.focus(); return; }
+
+  try{
+    await apiPost({action:'adjust', id, name:p.name, mode, value:raw, note:(noteInput.value||'').slice(0,80)});
+  }catch(e){ console.error(e); return; }
+
+  stockData = await apiGet('stock');
+  logData = await apiGet('log');
+  render();
+}
+
+async function applyPallet(id){
+  const p = PRODUCTS.find(x=>x.id===id);
+  const pallets = parseInt(document.getElementById('pallet_'+id).value, 10) || 0;
+  const boxes = parseInt(document.getElementById('palletbox_'+id).value, 10) || 0;
+  const total = pallets * p.boxPerPallet + boxes;
+  try{
+    await apiPost({action:'adjust', id, name:p.name, mode:'set', value:total, note:`파레트 실사: ${pallets}팔렛 ${boxes}${p.unit}`});
+  }catch(e){ console.error(e); return; }
+  stockData = await apiGet('stock');
+  logData = await apiGet('log');
+  render();
+}
+
+async function saveMeta(id){
+  const parVal = parseInt(document.getElementById('par_'+id).value, 10);
+  const expiryVal = document.getElementById('expiry_'+id).value || '';
+  const payload = {action:'saveMeta', id};
+  if(!isNaN(parVal)) payload.par = parVal;
+  payload.expiry = expiryVal;
+  try{
+    await apiPost(payload);
+  }catch(e){ console.error(e); return; }
+  stockData = await apiGet('stock');
+  render();
+}
+
+async function poll(){
+  if(!API_URL || API_URL.indexOf('PASTE_YOUR') === 0) return;
+  try{
+    const newStock = await apiGet('stock');
+    const newLog = await apiGet('log');
+    const stockStr = JSON.stringify(newStock);
+    const logStr = JSON.stringify(newLog);
+    if(stockStr !== lastStockStr || logStr !== lastLogStr){
+      stockData = newStock;
+      logData = newLog;
+      lastStockStr = stockStr;
+      lastLogStr = logStr;
+      render();
+    }
+    document.getElementById('syncText').textContent =
+      '방금 동기화됨 · ' + new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){
+    document.getElementById('syncText').textContent = '⚠ 동기화 실패 (연결 확인)';
+  }
+}
+
+(async function init(){
+  await loadAll();
+  lastStockStr = JSON.stringify(stockData);
+  lastLogStr = JSON.stringify(logData);
+  render();
+  if(API_URL && API_URL.indexOf('PASTE_YOUR') !== 0){
+    document.getElementById('syncText').textContent = '동기화됨';
+    setInterval(poll, POLL_MS);
+  }
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+  }
+})();
+</script>
+</body>
+</html>
