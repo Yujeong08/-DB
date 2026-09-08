@@ -1,5 +1,5 @@
-const CACHE='inventory-pwa-v6';
-const ASSETS=['./','./index.html','./manifest.json','./db-bridge.js','./api-compat.js','./fast-sync.js','./icon-192-v2.png','./icon-512-v2.png','./icon.svg'];
+const CACHE='inventory-pwa-v7';
+const ASSETS=['./','./index.html','./manifest.json','./backend-v4.js','./icon-192-v2.png','./icon-512-v2.png','./icon.svg'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{
@@ -9,9 +9,7 @@ self.addEventListener('fetch',e=>{
   if(isDoc){
     e.respondWith(fetch(e.request).then(async r=>{
       const t=await r.text();
-      let injected=t.includes('db-bridge.js')?t:t.replace('</head>','<script src="./db-bridge.js?v=2"></script></head>');
-      injected=injected.includes('api-compat.js')?injected:injected.replace('</head>','<script src="./api-compat.js?v=1"></script></head>');
-      injected=injected.includes('fast-sync.js')?injected:injected.replace('</head>','<script defer src="./fast-sync.js?v=1"></script></head>');
+      const injected=t.includes('backend-v4.js')?t:t.replace('</head>','<script src="./backend-v4.js?v=1"></script></head>');
       return new Response(injected,{status:r.status,statusText:r.statusText,headers:{'Content-Type':'text/html;charset=utf-8','Cache-Control':'no-cache'}});
     }).catch(()=>caches.match('./index.html')));
     return;
